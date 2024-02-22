@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		30DE82402B87961800AFE4CA /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 30DE823F2B87961800AFE4CA /* test.c */; };
 		30EB9CDE2B83DD550000D2BB /* libopencv_line_descriptor.4.9.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 30EB9CA72B83DD540000D2BB /* libopencv_line_descriptor.4.9.0.dylib */; };
 		30EB9CDF2B83DD550000D2BB /* libopencv_imgcodecs.4.9.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 30EB9CA82B83DD540000D2BB /* libopencv_imgcodecs.4.9.0.dylib */; };
 		30EB9CE02B83DD550000D2BB /* libopencv_surface_matching.4.9.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 30EB9CA92B83DD540000D2BB /* libopencv_surface_matching.4.9.0.dylib */; };
@@ -78,6 +79,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		30DE823F2B87961800AFE4CA /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		30EB7A1B2B86062B006EB12D /* Color Line Following.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "Color Line Following.entitlements"; sourceTree = "<group>"; };
 		30EB9C9C2B83D30A0000D2BB /* Color Line Following */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Color Line Following"; sourceTree = BUILT_PRODUCTS_DIR; };
 		30EB9CA72B83DD540000D2BB /* libopencv_line_descriptor.4.9.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_line_descriptor.4.9.0.dylib; path = ../../../../../../../../opt/homebrew/Cellar/opencv/4.9.0_3/lib/libopencv_line_descriptor.4.9.0.dylib; sourceTree = "<group>"; };
@@ -280,6 +282,7 @@
 			children = (
 				30EB7A1B2B86062B006EB12D /* Color Line Following.entitlements */,
 				30EB9D332B849E510000D2BB /* main.cpp */,
+				30DE823F2B87961800AFE4CA /* test.c */,
 			);
 			path = "Color Line Following";
 			sourceTree = "<group>";
@@ -342,6 +345,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				30EB9D382B849E510000D2BB /* main.cpp in Sources */,
+				30DE82402B87961800AFE4CA /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
