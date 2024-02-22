@@ -4,7 +4,7 @@
 #include <ctime>
 
 #define DISPLAY 1
-#define FPS 0
+#define FPS 1
 
 using namespace std;
 using namespace cv;
