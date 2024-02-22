@@ -136,7 +136,7 @@ int main(void) {
             // Display color along with 'maped'
             putText(
                     frames.back(),
-                    "dilated " + color,
+                    "dilated color",
                     Point(80, 80),
                     FONT_HERSHEY_SIMPLEX,
                     1,
