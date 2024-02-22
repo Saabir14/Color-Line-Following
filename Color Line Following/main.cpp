@@ -145,9 +145,9 @@ int main(void) {
                     );
 #endif
             
-            // Use *** to find weighted average of the color
+            // Find weighted average of the color
             vector<Vec4i> lines;
-            HoughLinesP(mapped, lines, 1, CV_PI / 180, 25, frame.rows / 2);
+            HoughLinesP(mapped, lines, 1, CV_PI / 180, 25, mapped.rows / 2);
             
             if (lines.empty())
                 continue;
@@ -183,13 +183,16 @@ int main(void) {
             line(lineMat, Point(mean_line[0], mean_line[1]), Point(mean_line[2], mean_line[3]), Scalar(255, 255, 0), 20);
 #endif
             
+            // Calculate the x-intercept
+            int x_intercept = -(mapped.rows - mean_slope * mapped.cols) / 2 / mean_slope;
+            if (!x_intercept)
+                continue;
+            
             // Calculate the bearing angle (rad)
             double bearing_angle_rad = atan(mean_slope);
             if (bearing_angle_rad > CV_PI)
                 bearing_angle_rad -= 2 * CV_PI;
             
-            // Calculate the x-intercept
-            int x_intercept = -(mapped.rows - mean_slope * mapped.cols) / 2 / mean_slope;
             cout << "Bearing angle: " << bearing_angle_rad << "\tHorizontal position: " << x_intercept << endl;
         }
         
