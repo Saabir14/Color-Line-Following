@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
+#include <numeric>
 
 #define DISPLAY 1
 #define FPS 1
@@ -9,15 +10,22 @@
 using namespace std;
 using namespace cv;
 
+vector<Mat> splitImage(Mat & image, int M, int N );
 #if DISPLAY
 Mat concatenateFrames(const vector<Mat>& frames);
 #endif
 
 // Matrices to store the frames
-Mat frame, mapped;
+Mat frame;
+
+// Number of horizontal splits
+const int horizontal_splits = 30;
+
+// parameters for the weighted average
+const double d2a_ratio = .5;
 
 // Maps
-using ScalarPair = pair<cv::Scalar, cv::Scalar>;
+using ScalarPair = pair<Scalar, Scalar>;
 using ColorMap = map<string, vector<ScalarPair>>;
 const ColorMap mapDictionary = {
     {"red", {
@@ -31,9 +39,13 @@ const ColorMap mapDictionary = {
         {Scalar(89, 102, 25), Scalar(125, 255, 255)}
     }},
     {"black", {
-        {Scalar(0, 0, 0), Scalar(180, 102, 64)}
+        {Scalar(0, 0, 0), Scalar(180, 102, 120)}
     }}
 };
+
+// Order of Maps
+const string colorOrder[] = {"black"};
+const int colorOrderSize = sizeof(colorOrder) / sizeof(colorOrder[0]);
 
 int main(void) {
     VideoCapture camera(0); // Initialize camera (change index if needed)
@@ -54,6 +66,7 @@ int main(void) {
     int frameCount = 0;
 #endif
     
+int colorIndex = 0;
     do {
         // Read a frame from the camera
         if (!camera.read(frame)) {
@@ -62,7 +75,7 @@ int main(void) {
         }
         
 #if FPS
-        clock_t start = clock(); // Start time
+        const clock_t start = clock(); // Start time
 #endif
         
 #if DISPLAY
@@ -84,10 +97,9 @@ int main(void) {
 //#endif
         
         // Apply a blur to the frame
-        //GaussianBlur(frameEQ, frameBlur, Size(11, 11), 0, 0);
-        blur(frame, frame, Size(11, 11), Point(-1, -1));
-        //medianBlur(frameEQ, frameBlur, 11);
-        //frameBlur = frameEQ.clone();
+        //GaussianBlur(frame, frame, Size(11, 11), 0, 0);
+        blur(frame, frame, Size(20, 20), Point(-1, -1));
+        //medianBlur(frame, frame, 11);
 #if DISPLAY
         frames.push_back(frame.clone());
 #endif
@@ -96,120 +108,141 @@ int main(void) {
         cvtColor(frame, frame, COLOR_BGR2HSV);
         //frames.push_back(frame.clone());
         
-#if DISPLAY
-        // Create Mat for showing lines
-        Mat lineMat = frames[0].clone();
-        frames.push_back(lineMat);
-#endif
-        // Create maps
-        // Filter each color from the frame and decide which color to use
-        // Set frame to that color
-        for (const auto& colorEntry : mapDictionary) {
-            const string& color = colorEntry.first;
-            const vector<ScalarPair>& bounds = colorEntry.second;
-            
-            for (const auto& pair : bounds)
-                inRange(frame, pair.first, pair.second, mapped);
-            
-#if DISPLAY
-            frames.push_back(mapped.clone());
-            // Display color along with 'maped'
-            putText(
-                    frames.back(),
-                    color,
-                    Point(80, 80),
-                    FONT_HERSHEY_SIMPLEX,
-                    1,
-                    Scalar(255, 255, 255),
-                    2
-                    );
-#endif
-            
-//            if (countNonZero(mapped) > pixels) {
-//
-//            }
-            
-            // Dialate 'maped' for simpler line detection
-            dilate(mapped, mapped, Mat(), Point(-1, -1), 20);
-#if DISPLAY
-            frames.push_back(mapped.clone());
-            // Display color along with 'maped'
-            putText(
-                    frames.back(),
-                    "dilated color",
-                    Point(80, 80),
-                    FONT_HERSHEY_SIMPLEX,
-                    1,
-                    Scalar(255, 255, 255),
-                    2
-                    );
-#endif
-            
-            // Find weighted average of the color
-            vector<Vec4i> lines;
-            HoughLinesP(mapped, lines, 1, CV_PI / 180, 25, mapped.rows / 2);
-            
-            if (lines.empty())
-                continue;
-            
-            double sum_slope = 0, sum_intercept = 0;
-            int count = 0;
-
-            for (size_t i = 0; i < lines.size(); i++) {
-                Vec4i l = lines[i];
-                double slope = (double)(l[3] - l[1]) / (l[2] - l[0]);
-                double intercept = l[1] - slope * l[0];
-                
-                sum_slope += slope;
-                sum_intercept += intercept;
-                count++;
-            }
-
-            double mean_slope = sum_slope / count;
-            double mean_intercept = sum_intercept / count;
-            
-#if DISPLAY
-            // Display the line
-            int x1 = 0;  // x-coordinate of the leftmost point
-            int y1 = mean_slope * x1 + mean_intercept;  // y-coordinate of the leftmost point
-
-            int x2 = mapped.cols;  // x-coordinate of the rightmost point
-            int y2 = mean_slope * x2 + mean_intercept;  // y-coordinate of the rightmost point
-            
-            for (Vec4i l : lines)
-                line(lineMat, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 255), 1);
-            
-            Vec4i mean_line(x1, y1, x2, y2);
-            line(lineMat, Point(mean_line[0], mean_line[1]), Point(mean_line[2], mean_line[3]), Scalar(255, 255, 0), 20);
-#endif
-            
-            // Calculate the x-intercept
-            int x_intercept = -(mapped.rows - mean_slope * mapped.cols) / 2 / mean_slope;
-            if (!x_intercept)
-                continue;
-            
-            // Calculate the bearing angle (rad)
-            double bearing_angle_rad = atan(mean_slope);
-            if (bearing_angle_rad > CV_PI)
-                bearing_angle_rad -= 2 * CV_PI;
-            
-            cout << "Bearing angle: " << bearing_angle_rad << "\tHorizontal position: " << x_intercept << endl;
-        }
+        // Set the frame to the mask of the relevent color
+        string color = colorOrder[colorIndex];
+        static Mat mask;
+        for (const auto& pair : mapDictionary.at(color))
+            inRange(frame, pair.first, pair.second, mask);
         
+        if (colorIndex + 1 < colorOrderSize)
+        {
+            static Mat newMask;
+            const string nextColor = colorOrder[(colorIndex + 1)];
+            for (const auto& pair : mapDictionary.at(nextColor))
+                inRange(frame, pair.first, pair.second, newMask);
+            
+            if (countNonZero(newMask) > countNonZero(mask) >> 2)
+            {
+                mask = newMask;
+                colorIndex++;
+            }
+        }
+        frame = mask;
 #if DISPLAY
+        frames.push_back(frame.clone());
+        // Display dialated color
         putText(
-                lineMat,
-                "lines",
+                frames.back(),
+                colorOrder[colorIndex],
                 Point(80, 80),
                 FONT_HERSHEY_SIMPLEX,
                 1,
                 Scalar(255, 255, 255),
                 2
                 );
+#endif
         
-        // Display all frames
-        concatenatedResult = concatenateFrames(frames);
-        imshow("frames", concatenatedResult);
+        // Dialate 'maped' for simpler line detection
+        dilate(frame, frame, Mat(), Point(-1, -1), 40);
+#if DISPLAY
+        frames.push_back(frame.clone());
+        // Display dialated color
+        putText(
+                frames.back(),
+                "dilated" + colorOrder[colorIndex],
+                Point(80, 80),
+                FONT_HERSHEY_SIMPLEX,
+                1,
+                Scalar(255, 255, 255),
+                2
+                );
+#endif
+        
+        // Find a line for weighted average using points
+        static vector<Point> points;
+        points.clear();
+        int count = 0;
+        for (Mat img : splitImage(frame, 1, horizontal_splits))
+        {
+            const Moments mu = moments(img, true);
+            Point center(mu.m10 / mu.m00, mu.m01 / mu.m00);
+            center.y += (frame.rows / horizontal_splits) * count;
+            points.push_back(center);
+            count++;
+        }
+
+#if DISPLAY
+        for (Point point : points)
+        {
+            circle(frames[0], point, 5, Scalar(0, 0, 255), -1);
+        }
+#endif
+
+        // Convert vector<Point> to Mat
+        Mat pointsMat = Mat(points);
+
+        // Calculate mean and standard deviation for x-coordinates
+        Mat xCoords = pointsMat.col(0); // Extract x-coordinates
+        Scalar mean, stddev;
+        meanStdDev(xCoords, mean, stddev);
+
+        // Create a mask for points within one standard deviation in x-direction
+        Mat m = (abs(xCoords - mean) <= stddev / 3);
+
+        // Apply the mask to get the points within one standard deviation
+        vector<Point> filteredPoints;
+        for(int i = 0; i < m.total(); i++) {
+            if(m.at<uchar>(i)) {
+                filteredPoints.push_back(points[i]);
+            }
+        }
+
+#if DISPLAY
+        for (Point point : filteredPoints)
+        {
+            circle(frames[0], point, 5, Scalar(0, 255, 0), -1);
+        }
+#endif
+        if (filteredPoints.size() >= 2)
+        {
+            Vec4f line_of_best_fit;
+            fitLine(filteredPoints, line_of_best_fit, DIST_L2, 0, .01, .01);
+            
+            // Extract line parameters
+            const float vx = line_of_best_fit[0];
+            const float vy = line_of_best_fit[1];
+            const float x = line_of_best_fit[2];
+            const float y = line_of_best_fit[3];
+            
+#if DISPLAY
+            // Calculate the line points from parameters
+            Point point1, point2;
+            point1.x = x - vx*1000; // Point on the line furthest from the center
+            point1.y = y - vy*1000;
+            point2.x = x + vx*1000; // Point on the line closest to the center
+            point2.y = y + vy*1000;
+            
+            // Draw the line of best fit
+            line(frames[0], point1, point2, Scalar(255, 0, 0), 2, LINE_AA);
+#endif
+            if (!vx)
+                continue;
+            const float m = vy / vx;
+            const float b = y - m * x;
+            const float horizontal_distence = (y - b) / m - (frame.cols >> 1);
+            float angle = atan(m);
+            if (angle > CV_PI)
+                angle -= CV_2PI;
+            
+            // Calculate weighted average using some multiplier of both the bearing angle and the horizontal position
+            const double w = horizontal_distence / (frame.cols >> 1) * d2a_ratio + angle / (CV_PI/2) * (1 - d2a_ratio);
+            cout << "Weighted average: " << w << endl;
+        }
+            
+#if DISPLAY
+            // Display all frames
+            concatenatedResult = concatenateFrames(frames);
+            imshow("frames", concatenatedResult);
 #endif
         
 #if FPS
@@ -234,6 +267,34 @@ int main(void) {
     // Release camera resources
     camera.release();
     return 0;
+}
+
+vector<Mat> splitImage(Mat & image, int M, int N )
+{
+  // All images should be the same size ...
+  int width  = image.cols / M;
+  int height = image.rows / N;
+  // ... except for the Mth column and the Nth row
+  int width_last_column = width  + ( image.cols % width  );
+  int height_last_row   = height + ( image.rows % height );
+
+  vector<Mat> result;
+
+  for( int i = 0; i < N; ++i )
+  {
+    for( int j = 0; j < M; ++j )
+    {
+      // Compute the region to crop from
+      Rect roi( width  * j,
+                    height * i,
+                    ( j == ( M - 1 ) ) ? width_last_column : width,
+                    ( i == ( N - 1 ) ) ? height_last_row   : height );
+
+      result.push_back( image( roi ) );
+    }
+  }
+
+  return result;
 }
 
 #if DISPLAY
@@ -271,12 +332,12 @@ Mat concatenateFrames(const vector<Mat>& frames) {
         Mat converted;
         if (frames[i].channels() == 1) {
             // If the image is binary, scale it to 0-255
-            if (cv::countNonZero(frames[i]) == 0 || cv::countNonZero(frames[i]) == frames[i].total()) {
+            if (countNonZero(frames[i]) == 0 || countNonZero(frames[i]) == frames[i].total()) {
                 frames[i].convertTo(converted, CV_8UC1, 255.0);
             } else {
                 converted = frames[i];
             }
-            cvtColor(converted, converted, cv::COLOR_GRAY2BGR);
+            cvtColor(converted, converted, COLOR_GRAY2BGR);
         } else {
             frames[i].convertTo(converted, CV_8UC3);
         }
