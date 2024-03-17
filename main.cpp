@@ -10,7 +10,7 @@
 using namespace std;
 using namespace cv;
 
-vector<Mat> splitImage(Mat & image, int M, int N );
+vector<Mat> splitImage(Mat & image, int M, int N);
 #if DISPLAY
 Mat concatenateFrames(const vector<Mat>& frames);
 #endif
