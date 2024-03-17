@@ -64,6 +64,7 @@ int main(void) {
 #if FPS
     double totalTime = 0;
     int frameCount = 0;
+    const clock_t start = clock(); // Start time
 #endif
     
 int colorIndex = 0;
@@ -73,10 +74,6 @@ int colorIndex = 0;
             cout << "Could not read from the camera" << endl;
             continue;
         }
-        
-#if FPS
-        const clock_t start = clock(); // Start time
-#endif
         
 #if DISPLAY
         // Clear the vectors of frames
